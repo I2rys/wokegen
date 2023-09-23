@@ -1,0 +1,13 @@
+{
+    "guildID": "",
+    "token": "",
+    "cooldowns": {
+        "freeMessage": "Please wait for 2 minutes to generate again.",
+        "free": 120,
+        "premiumMessage": "Please wait for 30 seconds to generate again.",
+        "premium": 30
+    },
+    "roles": {
+        "premium": ""
+    }
+}

@@ -1,0 +1,22 @@
+[
+    {
+        "name": "help",
+        "description": "Display the help menu."
+    },
+    {
+        "name": "stock",
+        "description": "Display the bot accounts stock."
+    },
+    {
+        "name": "generate",
+        "description": "Generate specific account.",
+        "options": [
+            {
+                "type": "STRING",
+                "name": "service",
+                "description": "The service to generate.",
+                "required": true
+            }
+        ]
+    }
+]
