@@ -1,8 +1,6 @@
 (async()=>{
     "use strict";
-
-    require("dotenv").config()
-
+    
     // Dependencies
     const { Client, Intents, MessageEmbed } = require("discord.js")
     const _ = require("lodash")
@@ -18,7 +16,7 @@
 
     // Functions
     const userCS = (userID)=>{return cooldowns.includes(`${userID}:free`) ? "free" : cooldowns.includes(`${userID}:premium`) ? "premium" : false}
-    const sendCooldown = async(interaction, premium)=>{userCS(interaction.user.id) === "premium" ? await interaction.reply(settings.cooldowns.premiumMessage) : await interaction.reply(settings.cooldowns.freeMessage)}
+    const sendCooldown = async(interaction)=>{userCS(interaction.user.id) === "premium" ? await interaction.reply(settings.cooldowns.premiumMessage) : await interaction.reply(settings.cooldowns.freeMessage)}
 
     // Main
     if(!freeAccounts.length) return console.log("There are no services found in free accounts folder.")
@@ -75,63 +73,33 @@
 
             await interaction.reply({ embeds: [embed] })
         }else if(interaction.commandName === "generate"){
+            if(userCS(interaction.user.id)) return sendCooldown(interaction)
             const service = interaction.options.getString("service", true)
 
-            if(interaction.member.roles.cache.has(settings.roles.premium)){
-                if(userCS(interaction.user.id)) return sendCooldown(interaction, interaction.member.roles.cache.has(settings.roles.premium))
-                const sP = `./premium-accounts/${service.toLowerCase()}.txt`
-                if(!premiumAccounts.includes(sP)) return await interaction.reply({ content: "Unable to find the specified service.", ephemeral: true })
+            // Accounts validations
+            const plan = interaction.member.roles.cache.has(settings.roles.premium) ? "premium" : "free"
+            const fP = `./${plan}-accounts/${service.toLowerCase()}.txt`
+            const accounts = fs.readFileSync(fP, "utf8").split("\n").filter((d) => d)
 
-                // Get account
-                var accounts = fs.readFileSync(sP, "utf8").split("\n").filter((d)=>d)
-                if(!accounts.length) return await interaction.reply({ content: "No stock for this service.", ephemeral: true })
-                const rAI = Math.floor(Math.random() * accounts.length)
-                const account = accounts[rAI]
+            // Accounts stuff
+            if(!accounts.length) return await interaction.reply({ content: "No stock for this service.", ephemeral: true })
+            const rAI = Math.floor(Math.random() * accounts.length)
+            const account = accounts[rAI]
+            accounts.splice(rAI, 1)
+            fs.writeFileSync(fP, accounts.join("\n"), "utf8")
 
-                // Delete selected account & rewrite stock obvious
-                delete accounts[rAI]
-                accounts = accounts.filter((a)=>a)
-                fs.writeFileSync(sP, accounts.join("\n"), "utf8")
+            // Send em
+            const embed = new MessageEmbed()
+            .setTitle("WokeGen")
+            .setDescription(`Plan: ${plan.charAt(0).toUpperCase() + plan.slice(1)}\nService: ${service.charAt(0).toUpperCase() + service.slice(1)}\nAccount: **${account}**`)
+            .setFooter("Sent from WokeGen.")
+            await interaction.user.send({ embeds: [embed] })
 
-                // Send em
-                const embed = new MessageEmbed()
-                .setTitle("WokeGen")
-                .setDescription(`Plan: Premium\nService: ${service.charAt(0).toUpperCase() + service.slice(1)}\nAccount: **${account}**`)
-                .setFooter("Sent from WokeGen.")
-
-                await interaction.user.send({ embeds: [embed] })
-                const cM = `${interaction.user.id}:premium`
-                cooldowns.push(cM)
-                await interaction.reply("Check your DM.")
-                setTimeout(()=>_.pull(cooldowns, cM), settings.cooldowns.premium * 1000)
-            }else{
-                if(userCS(interaction.user.id)) return sendCooldown(interaction, interaction.member.roles.cache.has(settings.roles.premium))
-                const sP = `./free-accounts/${service.toLowerCase()}.txt`
-                if(!freeAccounts.includes(sP)) return await interaction.reply({ content: "Unable to find the specified service.", ephemeral: true })
-
-                // Get account
-                var accounts = fs.readFileSync(sP, "utf8").split("\n").filter((d)=>d)
-                if(!accounts.length) return await interaction.reply({ content: "No stock for this service.", ephemeral: true })
-                const rAI = Math.floor(Math.random() * accounts.length)
-                const account = accounts[rAI]
-
-                // Delete selected account & rewrite stock
-                delete accounts[rAI]
-                accounts = accounts.filter((a)=>a)
-                fs.writeFileSync(sP, accounts.join("\n"), "utf8")
-
-                // Send em
-                const embed = new MessageEmbed()
-                .setTitle("WokeGen")
-                .setDescription(`Plan: Free\nService: ${service.charAt(0).toUpperCase() + service.slice(1)}\nAccount: **${account}**`)
-                .setFooter("Sent from WokeGen.")
-
-                await interaction.user.send({ embeds: [embed] })
-                const cM = `${interaction.user.id}:free`
-                cooldowns.push(cM)
-                await interaction.reply("Check your DM.")
-                setTimeout(()=>_.pull(cooldowns, cM), settings.cooldowns.free * 1000)
-            }
+            // Cooldown
+            const cM = `${interaction.user.id}:${plan}`
+            cooldowns.push(cM)
+            await interaction.reply("Check your DM.")
+            plan === "premium" ? setTimeout(()=>_.pull(cooldowns, cM), settings.cooldowns.premium * 1000) : setTimeout(()=>_.pull(cooldowns, cM), settings.cooldowns.free * 1000)
         }
     })
 
